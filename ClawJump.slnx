@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ClawJump.App/ClawJump.App.csproj" />
+    <Project Path="src/ClawJump.Avalonia/ClawJump.Avalonia.csproj" />
+  </Folder>
+</Solution>

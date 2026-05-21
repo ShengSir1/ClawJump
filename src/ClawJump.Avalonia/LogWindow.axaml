@@ -1,0 +1,71 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:models="clr-namespace:ClawJump.Avalonia.Models"
+        x:Class="ClawJump.Avalonia.LogWindow"
+        Title="Claw Jump 事件日志"
+        Width="860"
+        Height="560"
+        WindowStartupLocation="CenterScreen">
+
+	<Grid Margin="12">
+		<Grid.RowDefinitions>
+			<RowDefinition Height="*"/>
+			<RowDefinition Height="160"/>
+			<RowDefinition Height="Auto"/>
+		</Grid.RowDefinitions>
+
+		<ListBox x:Name="LogListBox"
+                 Grid.Row="0"
+                 Margin="0,0,0,10">
+
+			<ListBox.ItemTemplate>
+				<DataTemplate x:DataType="models:EventLogItem">
+					<Border Padding="8"
+							Margin="0,0,0,6"
+							BorderThickness="0,0,0,1"
+							BorderBrush="#DDD">
+						<StackPanel>
+							<TextBlock Text="{Binding Summary}"
+									   FontWeight="Bold"/>
+
+							<TextBlock Text="{Binding Message}"
+									   Margin="0,4,0,0"
+									   TextWrapping="Wrap"/>
+						</StackPanel>
+					</Border>
+				</DataTemplate>
+			</ListBox.ItemTemplate>
+		</ListBox>
+
+		<GroupBox Grid.Row="1"
+                  Header="RawInput / 原始输入"
+                  Margin="0,0,0,10">
+			<TextBox x:Name="RawInputTextBox"
+                     Margin="8"
+                     TextWrapping="Wrap"
+                     AcceptsReturn="True"
+                     IsReadOnly="True"/>
+		</GroupBox>
+
+		<StackPanel Grid.Row="2"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right">
+			<Button Content="打开日志文件"
+                    Width="120"
+                    Height="32"
+                    Margin="0,0,8,0"
+                    Click="OpenLogFile_Click"/>
+
+			<Button Content="打开日志目录"
+                    Width="120"
+                    Height="32"
+                    Margin="0,0,8,0"
+                    Click="OpenLogDirectory_Click"/>
+
+			<Button Content="关闭"
+                    Width="80"
+                    Height="32"
+                    Click="Close_Click"/>
+		</StackPanel>
+	</Grid>
+</Window>

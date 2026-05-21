@@ -1,0 +1,29 @@
+﻿<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="ClawJump.Avalonia.PetWindow"
+        Width="180"
+        Height="260"
+        WindowDecorations="None"
+        CanResize="False"
+        Topmost="True"
+        ShowInTaskbar="False"
+        Background="{x:Null}"
+        TransparencyLevelHint="Transparent">
+
+	<Grid Background="Transparent">
+		<!-- 完整小爪子 -->
+		<Image x:Name="ClawImage"
+               Source="/Assets/claw-idle.png"
+               Width="180"
+               Height="260"
+               Stretch="Uniform"
+               RenderTransformOrigin="0.5,0.5"/>
+
+		<!-- 贴边隐藏时显示的趴窗图 -->
+		<Image x:Name="DockImage"
+               IsVisible="False"
+               Width="72"
+               Height="120"
+               Stretch="Uniform"/>
+	</Grid>
+</Window>

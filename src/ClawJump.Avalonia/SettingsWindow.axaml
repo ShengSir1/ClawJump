@@ -1,0 +1,73 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="ClawJump.Avalonia.SettingsWindow"
+        Title="Claw Jump 设置"
+        Width="420"
+        Height="260"
+        CanResize="False"
+        WindowStartupLocation="CenterScreen">
+
+	<Grid Margin="18">
+		<Grid.RowDefinitions>
+			<RowDefinition Height="Auto"/>
+			<RowDefinition Height="Auto"/>
+			<RowDefinition Height="Auto"/>
+			<RowDefinition Height="*"/>
+			<RowDefinition Height="Auto"/>
+		</Grid.RowDefinitions>
+
+		<TextBlock Grid.Row="0"
+                   Text="基础设置"
+                   FontSize="18"
+                   FontWeight="Bold"
+                   Margin="0,0,0,16"/>
+
+		<Grid Grid.Row="1" Margin="0,0,0,14">
+			<Grid.ColumnDefinitions>
+				<ColumnDefinition Width="100"/>
+				<ColumnDefinition Width="*"/>
+			</Grid.ColumnDefinitions>
+
+			<TextBlock Grid.Column="0"
+                       Text="监听端口："
+                       VerticalAlignment="Center"/>
+
+			<TextBox x:Name="PortTextBox"
+                     Grid.Column="1"
+                     Height="32"
+                     VerticalContentAlignment="Center"/>
+		</Grid>
+
+		<StackPanel Grid.Row="2">
+			<CheckBox x:Name="ShowPetWhenEventReceivedCheckBox"
+                      Content="收到 Hook 事件时自动显示小爪子"
+                      Margin="0,0,0,10"/>
+
+			<CheckBox x:Name="ShowBalloonWhenEventReceivedCheckBox"
+                      Content="收到 Hook 事件时显示托盘提示"
+                      IsEnabled="False"/>
+		</StackPanel>
+
+		<TextBlock x:Name="MessageTextBlock"
+                   Grid.Row="3"
+                   Text="说明：Avalonia 版当前优先支持窗口提醒，系统气泡提示后续再加。"
+                   Foreground="Gray"
+                   TextWrapping="Wrap"
+                   Margin="0,16,0,0"/>
+
+		<StackPanel Grid.Row="4"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right">
+			<Button Content="保存"
+                    Width="80"
+                    Height="32"
+                    Margin="0,0,8,0"
+                    Click="Save_Click"/>
+
+			<Button Content="取消"
+                    Width="80"
+                    Height="32"
+                    Click="Cancel_Click"/>
+		</StackPanel>
+	</Grid>
+</Window>
