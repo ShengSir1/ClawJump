@@ -1,5 +1,4 @@
-﻿using System;
-using Avalonia;
+﻿using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Layout;
@@ -21,14 +20,17 @@ public partial class PetWindow : Window
     private const int DockThreshold = 36;
 
     // 隐藏后露出多少像素
-    private const int VisibleStrip = 72;
+    private const int VisibleStrip = 82;
+
+    private readonly Dictionary<string, Bitmap> _bitmapCache = new();
 
     private Image? _clawImage;
     private Image? _dockImage;
-    private bool _isReady;
 
+    private bool _isReady;
     private bool _isDocked;
     private bool _isUserMoving;
+
     private DockSide _dockSide = DockSide.None;
 
     private readonly DispatcherTimer _dockTimer;
@@ -48,7 +50,7 @@ public partial class PetWindow : Window
 
         _dockTimer = new DispatcherTimer
         {
-            Interval = TimeSpan.FromMilliseconds(450)
+            Interval = TimeSpan.FromMilliseconds(200)
         };
 
         _dockTimer.Tick += (_, _) =>
@@ -83,7 +85,7 @@ public partial class PetWindow : Window
             return;
         }
 
-        // 已经贴边隐藏时，点击露出的小条，只恢复显示，不再次隐藏
+        // 已经贴边隐藏时，点击爬窗图，只恢复显示，不再次隐藏
         if (_isDocked)
         {
             RestoreFromDock();
@@ -93,6 +95,8 @@ public partial class PetWindow : Window
 
         // 使用 Avalonia 原生窗口拖动，更跟手
         _isUserMoving = true;
+
+        // 拖动完整图时，确保显示完整小爪子
         HideDockImage();
 
         BeginMoveDrag(e);
@@ -141,23 +145,32 @@ public partial class PetWindow : Window
 
         var area = screen.WorkingArea;
 
-        var leftDistance = Math.Abs(Position.X - area.X);
-        var rightDistance = Math.Abs(area.Right - (Position.X + (int)Width));
-        var topDistance = Math.Abs(Position.Y - area.Y);
+        var windowLeft = Position.X;
+        var windowTop = Position.Y;
+        var windowRight = Position.X + (int)Width;
 
-        if (leftDistance <= DockThreshold)
+        // 已经靠近或超过左边界
+        var hitLeft = windowLeft <= area.X + DockThreshold;
+
+        // 已经靠近或超过右边界
+        var hitRight = windowRight >= area.Right - DockThreshold;
+
+        // 已经靠近或超过上边界
+        var hitTop = windowTop <= area.Y + DockThreshold;
+
+        if (hitLeft)
         {
             DockToLeft(area);
             return;
         }
 
-        if (rightDistance <= DockThreshold)
+        if (hitRight)
         {
             DockToRight(area);
             return;
         }
 
-        if (topDistance <= DockThreshold)
+        if (hitTop)
         {
             DockToTop(area);
             return;
@@ -165,6 +178,7 @@ public partial class PetWindow : Window
 
         _isDocked = false;
         _dockSide = DockSide.None;
+
         HideDockImage();
     }
 
@@ -173,11 +187,14 @@ public partial class PetWindow : Window
         _isDocked = true;
         _dockSide = DockSide.Left;
 
+        // 关键：移动前先隐藏两张图，避免爬窗图在中间位置闪现
+        HideBothImages();
+
         Position = new PixelPoint(
             area.X - (int)Width + VisibleStrip,
             Clamp(Position.Y, area.Y, area.Bottom - (int)Height));
 
-        ShowDockImage(DockSide.Left);
+        ShowOnlyDockImage(DockSide.Left);
     }
 
     private void DockToRight(PixelRect area)
@@ -185,11 +202,14 @@ public partial class PetWindow : Window
         _isDocked = true;
         _dockSide = DockSide.Right;
 
+        // 关键：移动前先隐藏两张图，避免爬窗图在中间位置闪现
+        HideBothImages();
+
         Position = new PixelPoint(
             area.Right - VisibleStrip,
             Clamp(Position.Y, area.Y, area.Bottom - (int)Height));
 
-        ShowDockImage(DockSide.Right);
+        ShowOnlyDockImage(DockSide.Right);
     }
 
     private void DockToTop(PixelRect area)
@@ -197,11 +217,14 @@ public partial class PetWindow : Window
         _isDocked = true;
         _dockSide = DockSide.Top;
 
+        // 关键：移动前先隐藏两张图，避免爬窗图在中间位置闪现
+        HideBothImages();
+
         Position = new PixelPoint(
             Clamp(Position.X, area.X, area.Right - (int)Width),
             area.Y - (int)Height + VisibleStrip);
 
-        ShowDockImage(DockSide.Top);
+        ShowOnlyDockImage(DockSide.Top);
     }
 
     private void RestoreFromDock()
@@ -214,6 +237,9 @@ public partial class PetWindow : Window
         }
 
         var area = screen.WorkingArea;
+
+        // 关键：恢复前先隐藏爬窗图，防止爬窗图残留在恢复前的位置
+        HideBothImages();
 
         switch (_dockSide)
         {
@@ -239,39 +265,85 @@ public partial class PetWindow : Window
         _isDocked = false;
         _dockSide = DockSide.None;
 
-        HideDockImage();
+        ShowOnlyFullImage();
     }
 
-    private void ShowDockImage(DockSide side)
+    private void HideBothImages()
+    {
+        if (_dockImage != null)
+        {
+            _dockImage.IsVisible = false;
+            _dockImage.Opacity = 1;
+        }
+
+        if (_clawImage != null)
+        {
+            _clawImage.IsVisible = false;
+            _clawImage.Opacity = 1;
+        }
+    }
+
+    private void ShowOnlyFullImage()
+    {
+        if (_dockImage != null)
+        {
+            _dockImage.IsVisible = false;
+            _dockImage.Opacity = 1;
+        }
+
+        if (_clawImage != null)
+        {
+            _clawImage.IsVisible = true;
+            _clawImage.Opacity = 1;
+        }
+    }
+
+    private void ShowOnlyDockImage(DockSide side)
+    {
+        if (_clawImage != null)
+        {
+            _clawImage.IsVisible = false;
+            _clawImage.Opacity = 1;
+        }
+
+        if (_dockImage == null)
+        {
+            return;
+        }
+
+        PrepareDockImageLayout(side);
+        UpdateDockImageByState();
+
+        _dockImage.Opacity = 1;
+        _dockImage.IsVisible = true;
+    }
+
+    private void PrepareDockImageLayout(DockSide side)
     {
         if (_dockImage == null)
         {
             return;
         }
 
-        UpdateDockImageByState();
-
-        _dockImage.IsVisible = true;
-
         switch (side)
         {
             case DockSide.Left:
-                _dockImage.Width = 72;
-                _dockImage.Height = 120;
+                _dockImage.Width = 88;
+                _dockImage.Height = 132;
                 _dockImage.HorizontalAlignment = HorizontalAlignment.Right;
                 _dockImage.VerticalAlignment = VerticalAlignment.Center;
                 break;
 
             case DockSide.Right:
-                _dockImage.Width = 72;
-                _dockImage.Height = 120;
+                _dockImage.Width = 88;
+                _dockImage.Height = 132;
                 _dockImage.HorizontalAlignment = HorizontalAlignment.Left;
                 _dockImage.VerticalAlignment = VerticalAlignment.Center;
                 break;
 
             case DockSide.Top:
-                _dockImage.Width = 120;
-                _dockImage.Height = 72;
+                _dockImage.Width = 132;
+                _dockImage.Height = 88;
                 _dockImage.HorizontalAlignment = HorizontalAlignment.Center;
                 _dockImage.VerticalAlignment = VerticalAlignment.Bottom;
                 break;
@@ -280,10 +352,7 @@ public partial class PetWindow : Window
 
     private void HideDockImage()
     {
-        if (_dockImage != null)
-        {
-            _dockImage.IsVisible = false;
-        }
+        ShowOnlyFullImage();
     }
 
     private void MoveToBottomRight()
@@ -310,7 +379,7 @@ public partial class PetWindow : Window
         }
 
         var uri = _isReady ? DockReadyImage : DockIdleImage;
-        _dockImage.Source = new Bitmap(AssetLoader.Open(new Uri(uri)));
+        _dockImage.Source = GetBitmap(uri);
     }
 
     public void SetIdle()
@@ -354,20 +423,27 @@ public partial class PetWindow : Window
 
     private void SetImage(string uri)
     {
-        try
+        if (_clawImage == null)
         {
-            if (_clawImage == null)
-            {
-                return;
-            }
+            return;
+        }
 
-            _clawImage.Source = new Bitmap(
-                AssetLoader.Open(new Uri(uri)));
-        }
-        catch
+        _clawImage.Source = GetBitmap(uri);
+    }
+
+    private Bitmap GetBitmap(string uri)
+    {
+        if (_bitmapCache.TryGetValue(uri, out var bitmap))
         {
-            // 图片加载失败时不让程序崩溃
+            return bitmap;
         }
+
+        using var stream = AssetLoader.Open(new Uri(uri));
+        bitmap = new Bitmap(stream);
+
+        _bitmapCache[uri] = bitmap;
+
+        return bitmap;
     }
 
     private static int Clamp(int value, int min, int max)

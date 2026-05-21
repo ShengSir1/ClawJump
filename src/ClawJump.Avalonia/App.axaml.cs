@@ -6,9 +6,7 @@ using Avalonia.Platform;
 using Avalonia.Threading;
 using ClawJump.Avalonia.Models;
 using ClawJump.Avalonia.Services;
-using System;
 using System.Diagnostics;
-using System.Threading.Tasks;
 
 namespace ClawJump.Avalonia;
 

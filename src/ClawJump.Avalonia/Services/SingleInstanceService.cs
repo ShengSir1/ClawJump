@@ -1,6 +1,4 @@
-﻿using System.Threading;
-
-namespace ClawJump.Avalonia.Services;
+﻿namespace ClawJump.Avalonia.Services;
 
 public sealed class SingleInstanceService : IDisposable
 {

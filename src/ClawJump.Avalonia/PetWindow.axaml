@@ -22,8 +22,8 @@
 		<!-- 贴边隐藏时显示的趴窗图 -->
 		<Image x:Name="DockImage"
                IsVisible="False"
-               Width="72"
-               Height="120"
+               Width="120"
+               Height="180"
                Stretch="Uniform"/>
 	</Grid>
 </Window>

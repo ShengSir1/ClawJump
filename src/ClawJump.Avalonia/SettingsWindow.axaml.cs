@@ -1,8 +1,7 @@
-using System;
 using Avalonia.Controls;
+using Avalonia.Interactivity;
 using ClawJump.Avalonia.Models;
 using ClawJump.Avalonia.Services;
-using Avalonia.Interactivity;
 
 namespace ClawJump.Avalonia;
 
