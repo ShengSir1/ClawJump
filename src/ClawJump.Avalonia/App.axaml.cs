@@ -19,6 +19,7 @@ public partial class App : Application
     private SingleInstanceService? _singleInstance;
     private LogWindow? _logWindow;
     private SettingsWindow? _settingsWindow;
+    private string? _lastClaudeHookEventType;
 
     public override void Initialize()
     {
@@ -52,6 +53,7 @@ public partial class App : Application
         try
         {
             await StartLocalServerAsync();
+            AutoMergeClaudeHookSettings();
         }
         catch
         {
@@ -214,6 +216,25 @@ public partial class App : Application
         }
     }
 
+    private void AutoMergeClaudeHookSettings()
+    {
+        try
+        {
+            var port = _config?.Port ?? 47653;
+
+            HookScriptService.MergeToClaudeSettings(port);
+            EventLogService.AddSystem("已自动写入 Claude Hook 配置。");
+
+            SyncPetWithClaudeStatus();
+        }
+        catch (Exception ex)
+        {
+            EventLogService.AddSystem($"自动写入 Claude Hook 配置失败：{ex.Message}");
+
+            SyncPetWithClaudeStatus();
+        }
+    }
+
     private void MergeClaudeHookSettings()
     {
         try
@@ -222,13 +243,11 @@ public partial class App : Application
 
             HookScriptService.MergeToClaudeSettings(port);
 
-            ShowPet();
-            _petWindow?.ShowReady();
+            SyncPetWithClaudeStatus();
         }
         catch
         {
-            ShowPet();
-            _petWindow?.ShowReady();
+            SyncPetWithClaudeStatus();
         }
     }
 
@@ -240,13 +259,37 @@ public partial class App : Application
 
             HookScriptService.Generate(port);
 
-            ShowPet();
-            _petWindow?.ShowReady();
+            SyncPetWithClaudeStatus();
         }
         catch
         {
-            ShowPet();
-            _petWindow?.ShowReady();
+            SyncPetWithClaudeStatus();
+        }
+    }
+
+    private void SyncPetWithClaudeStatus()
+    {
+        ShowPet();
+
+        switch (_lastClaudeHookEventType?.ToLower())
+        {
+            case "userpromptsubmit":
+                _petWindow?.SetIdle();
+                break;
+
+            case "stop":
+            case "notification":
+            case "approval_required":
+                _petWindow?.ShowReady();
+                break;
+
+            case null:
+                _petWindow?.SetIdle();
+                break;
+
+            default:
+                _petWindow?.ShowReady();
+                break;
         }
     }
 
@@ -306,6 +349,8 @@ public partial class App : Application
         {
             _petWindow.Show();
         }
+
+        _lastClaudeHookEventType = hookEvent.Type;
 
         switch (hookEvent.Type?.ToLower())
         {

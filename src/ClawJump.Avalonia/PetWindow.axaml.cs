@@ -15,6 +15,10 @@ public partial class PetWindow : Window
 
     private const string DockIdleImage = "avares://ClawJump/Assets/claw-peek-idle.png";
     private const string DockReadyImage = "avares://ClawJump/Assets/claw-peek-ready.png";
+    private const string DockIdleLeftImage = "avares://ClawJump/Assets/claw-peek-idle-left.png";
+    private const string DockReadyLeftImage = "avares://ClawJump/Assets/claw-peek-ready-left.png";
+    private const string DockIdleTopImage = "avares://ClawJump/Assets/claw-peek-idle-top.png";
+    private const string DockReadyTopImage = "avares://ClawJump/Assets/claw-peek-ready-top.png";
 
     // 靠近边界多少像素以内触发贴边隐藏
     private const int DockThreshold = 36;
@@ -59,8 +63,8 @@ public partial class PetWindow : Window
 
             if (_isUserMoving)
             {
-                _isUserMoving = false;
                 DockIfNeeded();
+                RestartDockTimer();
             }
         };
 
@@ -120,7 +124,7 @@ public partial class PetWindow : Window
 
     private void RestartDockTimerIfMoving()
     {
-        if (!_isUserMoving || _isDocked)
+        if (!_isUserMoving)
         {
             return;
         }
@@ -179,6 +183,7 @@ public partial class PetWindow : Window
         _isDocked = false;
         _dockSide = DockSide.None;
 
+        SetImage(_isReady ? ReadyImage : IdleImage);
         HideDockImage();
     }
 
@@ -265,6 +270,7 @@ public partial class PetWindow : Window
         _isDocked = false;
         _dockSide = DockSide.None;
 
+        SetImage(_isReady ? ReadyImage : IdleImage);
         ShowOnlyFullImage();
     }
 
@@ -378,30 +384,37 @@ public partial class PetWindow : Window
             return;
         }
 
-        var uri = _isReady ? DockReadyImage : DockIdleImage;
+        var uri = _dockSide switch
+        {
+            DockSide.Left => _isReady ? DockReadyLeftImage : DockIdleLeftImage,
+            DockSide.Top => _isReady ? DockReadyTopImage : DockIdleTopImage,
+            _ => _isReady ? DockReadyImage : DockIdleImage
+        };
         _dockImage.Source = GetBitmap(uri);
     }
 
     public void SetIdle()
     {
         _isReady = false;
-        SetImage(IdleImage);
-
         if (_isDocked)
         {
             UpdateDockImageByState();
+            return;
         }
+
+        SetImage(IdleImage);
     }
 
     public void SetReady()
     {
         _isReady = true;
-        SetImage(ReadyImage);
-
         if (_isDocked)
         {
             UpdateDockImageByState();
+            return;
         }
+
+        SetImage(ReadyImage);
     }
 
     public void ShowReady()
