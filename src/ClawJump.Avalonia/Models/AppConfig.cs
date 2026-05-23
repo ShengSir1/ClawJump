@@ -8,13 +8,16 @@ public class AppConfig
 
     public bool ShowBalloonWhenEventReceived { get; set; } = false;
 
+    public bool CleanupClaudeHookSettingsOnExit { get; set; } = false;
+
     public AppConfig Clone()
     {
         return new AppConfig
         {
             Port = Port,
             ShowPetWhenEventReceived = ShowPetWhenEventReceived,
-            ShowBalloonWhenEventReceived = ShowBalloonWhenEventReceived
+            ShowBalloonWhenEventReceived = ShowBalloonWhenEventReceived,
+            CleanupClaudeHookSettingsOnExit = CleanupClaudeHookSettingsOnExit
         };
     }
 }

@@ -12,8 +12,22 @@ public record HookMergeResult(
     string? BackupPath,
     string HookScriptPath);
 
+public record HookCleanupResult(
+    string SettingsPath,
+    string? BackupPath,
+    int RemovedCount,
+    bool SettingsFileExists,
+    bool Changed);
+
 public static class HookScriptService
 {
+    private static readonly string[] HookEventNames =
+    [
+        "Stop",
+        "Notification",
+        "UserPromptSubmit"
+    ];
+
     public static string HookDirectory =>
         Path.Combine(ConfigService.ConfigDirectory, "hooks");
 
@@ -68,20 +82,13 @@ public static class HookScriptService
 
         var hooksObj = GetOrCreateObject(root, "hooks");
 
-        UpsertHook(
-            hooksObj,
-            "Stop",
-            BuildCommand("Stop"));
-
-        UpsertHook(
-            hooksObj,
-            "Notification",
-            BuildCommand("Notification"));
-
-        UpsertHook(
-            hooksObj,
-            "UserPromptSubmit",
-            BuildCommand("UserPromptSubmit"));
+        foreach (var eventName in HookEventNames)
+        {
+            UpsertHook(
+                hooksObj,
+                eventName,
+                BuildCommand(eventName));
+        }
 
         var json = root.ToJsonString(new JsonSerializerOptions
         {
@@ -98,6 +105,109 @@ public static class HookScriptService
             ClaudeSettingsPath,
             backupPath,
             HookScriptPath);
+    }
+
+    public static HookCleanupResult CleanupClaudeSettings(bool createBackup = true)
+    {
+        if (!File.Exists(ClaudeSettingsPath))
+        {
+            return new HookCleanupResult(
+                ClaudeSettingsPath,
+                null,
+                0,
+                SettingsFileExists: false,
+                Changed: false);
+        }
+
+        var root = LoadClaudeSettingsRoot();
+
+        if (root["hooks"] is not JsonObject hooksObj)
+        {
+            return new HookCleanupResult(
+                ClaudeSettingsPath,
+                null,
+                0,
+                SettingsFileExists: true,
+                Changed: false);
+        }
+
+        var removedCount = 0;
+
+        foreach (var eventName in HookEventNames)
+        {
+            if (hooksObj[eventName] is not JsonArray eventArray)
+            {
+                continue;
+            }
+
+            for (var i = eventArray.Count - 1; i >= 0; i--)
+            {
+                if (eventArray[i] is not JsonObject matcherItem || matcherItem["hooks"] is not JsonArray innerHooks)
+                {
+                    continue;
+                }
+
+                var beforeCount = innerHooks.Count;
+                RemoveOldClawJumpHooks(innerHooks);
+                removedCount += beforeCount - innerHooks.Count;
+
+                var matcher = matcherItem["matcher"]?.GetValue<string>() ?? "";
+
+                if (matcher == "" && innerHooks.Count == 0)
+                {
+                    eventArray.RemoveAt(i);
+                }
+            }
+
+            if (eventArray.Count == 0)
+            {
+                hooksObj.Remove(eventName);
+            }
+        }
+
+        if (removedCount == 0)
+        {
+            return new HookCleanupResult(
+                ClaudeSettingsPath,
+                null,
+                0,
+                SettingsFileExists: true,
+                Changed: false);
+        }
+
+        if (hooksObj.Count == 0)
+        {
+            root.Remove("hooks");
+        }
+
+        string? backupPath = null;
+
+        if (createBackup)
+        {
+            backupPath = Path.Combine(
+                ClaudeConfigDirectory,
+                $"settings.json.bak-{DateTime.Now:yyyyMMddHHmmss}");
+
+            File.Copy(ClaudeSettingsPath, backupPath, overwrite: false);
+        }
+
+        var json = root.ToJsonString(new JsonSerializerOptions
+        {
+            WriteIndented = true,
+            Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
+        });
+
+        File.WriteAllText(
+            ClaudeSettingsPath,
+            json,
+            new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+
+        return new HookCleanupResult(
+            ClaudeSettingsPath,
+            backupPath,
+            removedCount,
+            SettingsFileExists: true,
+            Changed: true);
     }
 
     public static void OpenClaudeConfigDirectory()

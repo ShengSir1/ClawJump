@@ -1,6 +1,6 @@
 #define MyAppName "Claw Jump"
 #define MyAppExeName "ClawJump.exe"
-#define MyAppVersion "0.2.2"
+#define MyAppVersion "0.2.3"
 #define MyAppPublisher "ShengSir"
 #define MyAppURL "https://github.com/ShengSir1/ClawJump.git"
 
@@ -50,3 +50,28 @@ Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: 
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "启动 Claw Jump"; Flags: nowait postinstall skipifsilent
+
+[Code]
+function InitializeUninstall(): Boolean;
+var
+  ResultCode: Integer;
+begin
+  Result := True;
+
+  if UninstallSilent() then
+  begin
+    Exit;
+  end;
+
+  if MsgBox('是否同时从 Claude Code 的 settings.json 中移除 Claw Jump Hook 配置？', mbConfirmation, MB_YESNO) = IDYES then
+  begin
+    if not Exec(ExpandConstant('{app}\{#MyAppExeName}'), '--cleanup-claude-hooks', '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+    begin
+      MsgBox('无法启动 Hook 配置清理命令，卸载将继续。', mbError, MB_OK);
+    end
+    else if ResultCode <> 0 then
+    begin
+      MsgBox('Hook 配置清理失败，请稍后手动检查 Claude Code 的 settings.json。卸载将继续。', mbError, MB_OK);
+    end;
+  end;
+end;

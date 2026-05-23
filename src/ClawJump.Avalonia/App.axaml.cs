@@ -585,8 +585,38 @@ public partial class App : Application
         _petWindow?.ShowReady();
     }
 
+    private void CleanupClaudeHookSettingsOnExitIfEnabled()
+    {
+        _config ??= ConfigService.Load();
+
+        if (!_config.CleanupClaudeHookSettingsOnExit)
+        {
+            return;
+        }
+
+        try
+        {
+            var result = HookScriptService.CleanupClaudeSettings();
+
+            if (result.Changed)
+            {
+                EventLogService.AddSystem($"退出时已清理 Claude Hook 配置，移除 {result.RemovedCount} 项。");
+            }
+            else
+            {
+                EventLogService.AddSystem("退出时未发现需要清理的 Claude Hook 配置。");
+            }
+        }
+        catch (Exception ex)
+        {
+            EventLogService.AddSystem($"退出时清理 Claude Hook 配置失败：{ex.Message}");
+        }
+    }
+
     private async void ExitApp()
     {
+        CleanupClaudeHookSettingsOnExitIfEnabled();
+
         if (_server != null)
         {
             await _server.StopAsync();

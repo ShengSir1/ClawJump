@@ -3,7 +3,7 @@
         x:Class="ClawJump.Avalonia.SettingsWindow"
         Title="Claw Jump 设置"
         Width="420"
-        Height="260"
+        Height="300"
         CanResize="False"
         WindowStartupLocation="CenterScreen">
 
@@ -45,7 +45,11 @@
 
 			<CheckBox x:Name="ShowBalloonWhenEventReceivedCheckBox"
                       Content="收到 Hook 事件时显示托盘提示"
+                      Margin="0,0,0,10"
                       IsEnabled="False"/>
+
+			<CheckBox x:Name="CleanupClaudeHookSettingsOnExitCheckBox"
+                      Content="退出 Claw Jump 时清理 Claude Hook 配置"/>
 		</StackPanel>
 
 		<TextBlock x:Name="MessageTextBlock"

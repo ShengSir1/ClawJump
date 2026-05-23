@@ -39,7 +39,8 @@ public partial class SettingsWindow : Window
         PortTextBox.Text = _editingConfig.Port.ToString();
         ShowPetWhenEventReceivedCheckBox.IsChecked = _editingConfig.ShowPetWhenEventReceived;
         ShowBalloonWhenEventReceivedCheckBox.IsChecked = _editingConfig.ShowBalloonWhenEventReceived;
-        MessageTextBlock.Text = "说明：修改监听端口后，会自动重启本地服务，并重新生成 Hook 脚本。";
+        CleanupClaudeHookSettingsOnExitCheckBox.IsChecked = _editingConfig.CleanupClaudeHookSettingsOnExit;
+        MessageTextBlock.Text = "说明：修改监听端口后，会自动重启本地服务，并重新生成 Hook 脚本。启用退出清理后，托盘退出时会移除 Claw Jump Hook 配置。";
     }
 
     private void Save_Click(object? sender, RoutedEventArgs e)
@@ -61,6 +62,8 @@ public partial class SettingsWindow : Window
             ShowPetWhenEventReceivedCheckBox.IsChecked == true;
         _editingConfig.ShowBalloonWhenEventReceived =
             ShowBalloonWhenEventReceivedCheckBox.IsChecked == true;
+        _editingConfig.CleanupClaudeHookSettingsOnExit =
+            CleanupClaudeHookSettingsOnExitCheckBox.IsChecked == true;
 
         ConfigService.Save(_editingConfig);
 
