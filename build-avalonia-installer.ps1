@@ -24,6 +24,11 @@ Write-Host ''
 Write-Host 'Step 2: build installer...' -ForegroundColor Cyan
 & $inno $iss
 
+$latestInstaller = Get-ChildItem (Join-Path $PSScriptRoot 'installer-output') `
+    -Filter 'ClawJump-Avalonia-Setup-*.exe' |
+    Sort-Object LastWriteTime -Descending |
+    Select-Object -First 1
+
 Write-Host ''
 Write-Host 'Installer completed:' -ForegroundColor Green
-Write-Host (Join-Path $PSScriptRoot 'installer-output\ClawJump-Avalonia-Setup-0.2.0.exe')
+Write-Host $latestInstaller.FullName
