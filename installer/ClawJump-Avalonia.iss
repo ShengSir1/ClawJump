@@ -1,8 +1,8 @@
 #define MyAppName "Claw Jump"
 #define MyAppExeName "ClawJump.exe"
-#define MyAppVersion "0.2.0"
-#define MyAppPublisher "ShengSir1"
-#define MyAppURL "https://github.com/ShengSir1/claw-jump-windows"
+#define MyAppVersion "0.2.1"
+#define MyAppPublisher "ShengSir"
+#define MyAppURL "https://github.com/ShengSir1/ClawJump.git"
 
 [Setup]
 AppId={{D9264037-5D59-42CF-9C02-7E1A8D0D2A20}
