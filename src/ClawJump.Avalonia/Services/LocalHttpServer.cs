@@ -14,6 +14,8 @@ public class LocalHttpServer
 
     public event Action<HookEvent>? OnHookEventReceived;
 
+    public bool IsRunning => _host != null;
+
     public LocalHttpServer(int port)
     {
         _port = port;
@@ -73,9 +75,9 @@ public class LocalHttpServer
             }
         });
 
-        _host = app;
-
         await app.StartAsync();
+
+        _host = app;
     }
 
     public async Task StopAsync()

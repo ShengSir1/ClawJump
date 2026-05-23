@@ -20,6 +20,12 @@ public partial class App : Application
     private LogWindow? _logWindow;
     private SettingsWindow? _settingsWindow;
     private string? _lastClaudeHookEventType;
+    private NativeMenuItem? _healthSummaryItem;
+    private NativeMenuItem? _serverStatusItem;
+    private NativeMenuItem? _hookStatusItem;
+    private NativeMenuItem? _refreshHealthItem;
+    private HookHealthStatus? _lastHealthStatus;
+    private bool _isHealthCheckRunning;
 
     public override void Initialize()
     {
@@ -54,6 +60,7 @@ public partial class App : Application
         {
             await StartLocalServerAsync();
             AutoMergeClaudeHookSettings();
+            await RefreshHealthStatusAsync(logResult: false);
         }
         catch
         {
@@ -78,6 +85,24 @@ public partial class App : Application
 
         var markViewedItem = new NativeMenuItem("标记已查看");
         markViewedItem.Click += (_, _) => MarkViewed();
+
+        _healthSummaryItem = new NativeMenuItem("状态：未检查")
+        {
+            IsEnabled = false
+        };
+
+        _serverStatusItem = new NativeMenuItem("本地服务：未检查")
+        {
+            IsEnabled = false
+        };
+
+        _hookStatusItem = new NativeMenuItem("Claude Hook：未检查")
+        {
+            IsEnabled = false
+        };
+
+        _refreshHealthItem = new NativeMenuItem("检查 Hook 状态");
+        _refreshHealthItem.Click += async (_, _) => await RefreshHealthStatusAsync(logResult: true);
 
         var settingsItem = new NativeMenuItem("打开设置");
         settingsItem.Click += (_, _) => ShowSettingsWindow();
@@ -109,6 +134,12 @@ public partial class App : Application
         menu.Items.Add(markViewedItem);
         menu.Items.Add(new NativeMenuItemSeparator());
 
+        menu.Items.Add(_healthSummaryItem);
+        menu.Items.Add(_serverStatusItem);
+        menu.Items.Add(_hookStatusItem);
+        menu.Items.Add(_refreshHealthItem);
+        menu.Items.Add(new NativeMenuItemSeparator());
+
         menu.Items.Add(settingsItem);
         menu.Items.Add(openConfigItem);
         menu.Items.Add(openClaudeConfigItem);
@@ -124,7 +155,7 @@ public partial class App : Application
 
         _trayIcon = new TrayIcon
         {
-            ToolTipText = "Claw Jump",
+            ToolTipText = "Claw Jump\n状态：未检查",
             Icon = new WindowIcon(AssetLoader.Open(new Uri("avares://ClawJump/Assets/claw.ico"))),
             Menu = menu,
             IsVisible = true
@@ -144,6 +175,7 @@ public partial class App : Application
         {
             ShowPet();
             _petWindow?.SetReady();
+            await RefreshHealthStatusAsync(logResult: false);
             return;
         }
 
@@ -160,6 +192,8 @@ public partial class App : Application
             ShowPet();
             _petWindow?.SetReady();
         }
+
+        await RefreshHealthStatusAsync(logResult: false);
     }
 
     private async Task StopLocalServerAsync()
@@ -249,6 +283,8 @@ public partial class App : Application
         {
             SyncPetWithClaudeStatus();
         }
+
+        _ = RefreshHealthStatusAsync(logResult: false);
     }
 
     private void GenerateClaudeHookScripts()
@@ -265,6 +301,163 @@ public partial class App : Application
         {
             SyncPetWithClaudeStatus();
         }
+
+        _ = RefreshHealthStatusAsync(logResult: false);
+    }
+
+    private async Task RefreshHealthStatusAsync(bool logResult)
+    {
+        if (_isHealthCheckRunning)
+        {
+            return;
+        }
+
+        _isHealthCheckRunning = true;
+        UpdateTrayHealthChecking();
+
+        try
+        {
+            _config ??= ConfigService.Load();
+
+            var status = await HookHealthService.CheckAsync(
+                _config.Port,
+                _server?.IsRunning == true);
+
+            _lastHealthStatus = status;
+            UpdateTrayHealthStatus(status);
+
+            if (logResult)
+            {
+                EventLogService.AddSystem(BuildHealthLogMessage(status));
+            }
+        }
+        catch (Exception ex)
+        {
+            UpdateTrayHealthError(ex.Message);
+
+            if (logResult)
+            {
+                EventLogService.AddSystem($"Hook 状态检查失败：{ex.Message}");
+            }
+        }
+        finally
+        {
+            _isHealthCheckRunning = false;
+        }
+    }
+
+    private void UpdateTrayHealthChecking()
+    {
+        if (_trayIcon != null)
+        {
+            _trayIcon.ToolTipText = "Claw Jump\n状态：检查中";
+        }
+
+        if (_healthSummaryItem != null)
+        {
+            _healthSummaryItem.Header = "状态：检查中";
+        }
+    }
+
+    private void UpdateTrayHealthStatus(HookHealthStatus status)
+    {
+        if (_trayIcon != null)
+        {
+            _trayIcon.ToolTipText = BuildTrayToolTip(status);
+        }
+
+        if (_healthSummaryItem != null)
+        {
+            _healthSummaryItem.Header = $"状态：{GetSeverityText(status.Severity)}（{status.CheckedAt:HH:mm}）";
+        }
+
+        if (_serverStatusItem != null)
+        {
+            _serverStatusItem.Header = status.ServerHealthEndpointOk
+                ? $"本地服务：运行中，端口 {status.Port}"
+                : $"本地服务：不可用，端口 {status.Port}";
+        }
+
+        if (_hookStatusItem != null)
+        {
+            var configuredCount = new[]
+            {
+                status.StopHookConfigured,
+                status.NotificationHookConfigured,
+                status.UserPromptSubmitHookConfigured
+            }.Count(configured => configured);
+
+            _hookStatusItem.Header = status.ClaudeSettingsParseable
+                ? $"Claude Hook：{configuredCount}/3 已配置"
+                : "Claude Hook：配置异常";
+        }
+    }
+
+    private void UpdateTrayHealthError(string message)
+    {
+        if (_trayIcon != null)
+        {
+            _trayIcon.ToolTipText = $"Claw Jump\n状态：异常\n{message}";
+        }
+
+        if (_healthSummaryItem != null)
+        {
+            _healthSummaryItem.Header = "状态：异常";
+        }
+
+        if (_hookStatusItem != null)
+        {
+            _hookStatusItem.Header = "Claude Hook：检查失败";
+        }
+    }
+
+    private static string BuildTrayToolTip(HookHealthStatus status)
+    {
+        return $"Claw Jump\n状态：{GetSeverityText(status.Severity)}\n本地服务：{(status.ServerHealthEndpointOk ? "运行中" : "不可用")}\nClaude Hook：{GetHookStatusText(status)}";
+    }
+
+    private static string BuildHealthLogMessage(HookHealthStatus status)
+    {
+        var details = string.Join("；", status.Items.Select(item => $"{item.Name}: {item.Message}"));
+        return $"Hook 状态检查：{GetSeverityText(status.Severity)}。{details}";
+    }
+
+    private static string GetSeverityText(HealthSeverity severity)
+    {
+        return severity switch
+        {
+            HealthSeverity.Ok => "正常",
+            HealthSeverity.Warning => "需要检查",
+            HealthSeverity.Error => "异常",
+            _ => "未知"
+        };
+    }
+
+    private static string GetHookStatusText(HookHealthStatus status)
+    {
+        if (!status.ClaudeSettingsParseable)
+        {
+            return "配置异常";
+        }
+
+        if (!status.HookScriptExists)
+        {
+            return "脚本缺失";
+        }
+
+        if (!status.HookScriptPortMatches)
+        {
+            return "端口不匹配";
+        }
+
+        var configuredCount = new[]
+        {
+            status.StopHookConfigured,
+            status.NotificationHookConfigured,
+            status.UserPromptSubmitHookConfigured
+        }.Count(configured => configured);
+
+        return configuredCount == 3 ? "已配置" : $"{configuredCount}/3 已配置";
     }
 
     private void SyncPetWithClaudeStatus()
