@@ -25,8 +25,11 @@ public partial class App : Application
     private NativeMenuItem? _serverStatusItem;
     private NativeMenuItem? _hookStatusItem;
     private NativeMenuItem? _refreshHealthItem;
+    private NativeMenuItem? _versionItem;
+    private NativeMenuItem? _checkUpdateItem;
     private HookHealthStatus? _lastHealthStatus;
     private bool _isHealthCheckRunning;
+    private bool _isUpdateCheckRunning;
 
     public override void Initialize()
     {
@@ -105,6 +108,14 @@ public partial class App : Application
         _refreshHealthItem = new NativeMenuItem("检查 Hook 状态");
         _refreshHealthItem.Click += async (_, _) => await RefreshHealthStatusAsync(logResult: true);
 
+        _versionItem = new NativeMenuItem($"当前版本：{UpdateCheckService.CurrentVersion}")
+        {
+            IsEnabled = false
+        };
+
+        _checkUpdateItem = new NativeMenuItem("检查更新");
+        _checkUpdateItem.Click += async (_, _) => await CheckForUpdatesAsync(logResult: true);
+
         var settingsItem = new NativeMenuItem("打开设置");
         settingsItem.Click += (_, _) => ShowSettingsWindow();
 
@@ -139,6 +150,10 @@ public partial class App : Application
         menu.Items.Add(_serverStatusItem);
         menu.Items.Add(_hookStatusItem);
         menu.Items.Add(_refreshHealthItem);
+        menu.Items.Add(new NativeMenuItemSeparator());
+
+        menu.Items.Add(_versionItem);
+        menu.Items.Add(_checkUpdateItem);
         menu.Items.Add(new NativeMenuItemSeparator());
 
         menu.Items.Add(settingsItem);
@@ -410,6 +425,93 @@ public partial class App : Application
         {
             _hookStatusItem.Header = "Claude Hook：检查失败";
         }
+    }
+
+    private async Task CheckForUpdatesAsync(bool logResult)
+    {
+        if (_isUpdateCheckRunning)
+        {
+            return;
+        }
+
+        _isUpdateCheckRunning = true;
+        UpdateTrayUpdateChecking();
+
+        try
+        {
+            var result = await UpdateCheckService.CheckAsync();
+            UpdateTrayUpdateStatus(result);
+
+            if (logResult)
+            {
+                EventLogService.AddSystem(BuildUpdateLogMessage(result));
+            }
+
+            if (result.HasUpdate && !string.IsNullOrWhiteSpace(result.ReleaseUrl))
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = result.ReleaseUrl,
+                    UseShellExecute = true
+                });
+            }
+        }
+        finally
+        {
+            _isUpdateCheckRunning = false;
+
+            if (_checkUpdateItem != null)
+            {
+                _checkUpdateItem.IsEnabled = true;
+            }
+        }
+    }
+
+    private void UpdateTrayUpdateChecking()
+    {
+        if (_checkUpdateItem != null)
+        {
+            _checkUpdateItem.Header = "检查更新中...";
+            _checkUpdateItem.IsEnabled = false;
+        }
+    }
+
+    private void UpdateTrayUpdateStatus(UpdateCheckResult result)
+    {
+        if (_versionItem != null)
+        {
+            _versionItem.Header = $"当前版本：{result.CurrentVersion}";
+        }
+
+        if (_checkUpdateItem == null)
+        {
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(result.ErrorMessage))
+        {
+            _checkUpdateItem.Header = "检查更新失败";
+            return;
+        }
+
+        _checkUpdateItem.Header = result.HasUpdate
+            ? $"发现新版本：{result.LatestVersion}"
+            : $"已是最新版本：{result.CurrentVersion}";
+    }
+
+    private static string BuildUpdateLogMessage(UpdateCheckResult result)
+    {
+        if (!string.IsNullOrWhiteSpace(result.ErrorMessage))
+        {
+            return $"检查更新失败：{result.ErrorMessage}";
+        }
+
+        if (result.HasUpdate)
+        {
+            return $"发现新版本：当前 {result.CurrentVersion}，最新 {result.LatestVersion}。{result.ReleaseUrl}";
+        }
+
+        return $"检查更新：当前版本 {result.CurrentVersion} 已是最新版本。";
     }
 
     private static string BuildTrayToolTip(HookHealthStatus status)

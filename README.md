@@ -13,7 +13,7 @@ Claw Jump 是一个面向 Windows 的 Claude Code 桌面提醒工具。它会在
 - 桌面小爪子提醒窗口，默认置顶显示
 - 支持空闲、工作中、完成提醒、审批提示、异常离线等多状态图片切换
 - 支持拖拽移动，靠近左侧、右侧或顶部边缘时自动贴边隐藏
-- 系统托盘菜单：显示/隐藏小爪子、测试提醒、标记已查看、打开设置、查看日志等
+- 系统托盘菜单：显示/隐藏小爪子、测试提醒、标记已查看、检查更新、打开设置、查看日志等
 - 本地回环 HTTP 服务接收 Claude Code Hook 事件
 - 自动生成并写入 Claude Code Hook 配置
 - Hook 健康检查：检查本地服务、Hook 脚本、Claude settings.json 配置状态
@@ -67,6 +67,8 @@ dotnet run --project src/ClawJump.Avalonia/ClawJump.Avalonia.csproj
 - **测试发光提醒**：手动切换到提醒状态
 - **标记已查看**：切换回空闲状态
 - **检查 Hook 状态**：检查本地服务和 Claude Hook 配置是否正常
+- **当前版本**：查看正在运行的 Claw Jump 版本号
+- **检查更新**：从 GitHub Releases 检查新版本，发现更新时自动打开发布页面
 - **打开设置**：修改监听端口、提醒行为、退出时是否清理 Hook 配置
 - **打开配置目录**：打开 Claw Jump 配置和日志目录
 - **打开 Claude 配置目录**：打开 `%USERPROFILE%\.claude`
@@ -152,7 +154,7 @@ Claw Jump is a Windows desktop notifier for Claude Code. It shows a draggable, t
 - Desktop claw reminder window with topmost display
 - State-specific images for idle, working, ready, approval-required, and offline/error states
 - Drag-and-drop positioning with edge docking on the left, right, and top edges
-- System tray menu for showing/hiding the claw, testing alerts, marking events as viewed, opening settings, and viewing logs
+- System tray menu for showing/hiding the claw, testing alerts, marking events as viewed, checking for updates, opening settings, and viewing logs
 - Local loopback HTTP server for Claude Code hook events
 - Automatic Claude Code hook script generation and settings merge
 - Hook health checks for the local service, generated script, and Claude settings.json
@@ -206,6 +208,8 @@ Right-click the tray icon to open the menu:
 - **Test alert**: manually switch to the ready state
 - **Mark viewed**: switch back to idle
 - **Check Hook status**: check the local service and Claude Hook configuration
+- **Current version**: view the running Claw Jump version
+- **Check for updates**: check GitHub Releases for a newer version and open the release page when an update is available
 - **Open settings**: change the port, alert behavior, and exit cleanup option
 - **Open config directory**: open the Claw Jump config and log directory
 - **Open Claude config directory**: open `%USERPROFILE%\.claude`
