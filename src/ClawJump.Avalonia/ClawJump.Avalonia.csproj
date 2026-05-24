@@ -10,9 +10,9 @@
 		<RootNamespace>ClawJump.Avalonia</RootNamespace>
 		<ApplicationIcon>Assets\claw.ico</ApplicationIcon>
 
-		<Version>0.2.3</Version>
-		<FileVersion>0.2.3.0</FileVersion>
-		<AssemblyVersion>0.2.3.0</AssemblyVersion>
+		<Version>0.2.4</Version>
+		<FileVersion>0.2.4.0</FileVersion>
+		<AssemblyVersion>0.2.4.0</AssemblyVersion>
 		<Authors>ShengSir1</Authors>
 		<Company>ShengSir1</Company>
 		<Product>Claw Jump</Product>

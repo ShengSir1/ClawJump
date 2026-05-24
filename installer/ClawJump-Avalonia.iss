@@ -1,6 +1,6 @@
 #define MyAppName "Claw Jump"
 #define MyAppExeName "ClawJump.exe"
-#define MyAppVersion "0.2.3"
+#define MyAppVersion "0.2.4"
 #define MyAppPublisher "ShengSir"
 #define MyAppURL "https://github.com/ShengSir1/ClawJump.git"
 

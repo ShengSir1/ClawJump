@@ -11,6 +11,7 @@ Claw Jump 是一个面向 Windows 的 Claude Code 桌面提醒工具。它会在
 ### 功能特性
 
 - 桌面小爪子提醒窗口，默认置顶显示
+- 支持空闲、工作中、完成提醒、审批提示、异常离线等多状态图片切换
 - 支持拖拽移动，靠近左侧、右侧或顶部边缘时自动贴边隐藏
 - 系统托盘菜单：显示/隐藏小爪子、测试提醒、标记已查看、打开设置、查看日志等
 - 本地回环 HTTP 服务接收 Claude Code Hook 事件
@@ -38,6 +39,8 @@ winget install -e --id JRSoftware.InnoSetup
 #### 使用安装包
 
 运行发布的 `ClawJump-Avalonia-Setup-*.exe` 安装程序，然后启动 Claw Jump。
+
+升级已有安装时，直接运行新版安装包并覆盖安装到原目录即可。用户配置、日志和生成的 Hook 文件保存在 `%APPDATA%\ClawJump`，不会随安装目录覆盖而删除；如新版调整了 Hook 行为，启动后建议检查 Hook 状态或重新执行“一键写入 Claude Hook 配置”。
 
 启动后，Claw Jump 会：
 
@@ -93,9 +96,9 @@ Hook 流程：
 
 | Hook 事件 | 行为 |
 | --- | --- |
-| Stop | 显示提醒状态 |
-| Notification | 显示提醒状态 |
-| UserPromptSubmit | 回到空闲状态 |
+| Stop | 显示完成/提醒状态 |
+| Notification | 显示提醒状态；当通知内容表示 Claude Code 需要审批/授权时，显示审批提示状态 |
+| UserPromptSubmit | 显示工作中状态 |
 
 ### 设置项
 
@@ -147,6 +150,7 @@ Claw Jump is a Windows desktop notifier for Claude Code. It shows a draggable, t
 ### Features
 
 - Desktop claw reminder window with topmost display
+- State-specific images for idle, working, ready, approval-required, and offline/error states
 - Drag-and-drop positioning with edge docking on the left, right, and top edges
 - System tray menu for showing/hiding the claw, testing alerts, marking events as viewed, opening settings, and viewing logs
 - Local loopback HTTP server for Claude Code hook events
@@ -174,6 +178,8 @@ winget install -e --id JRSoftware.InnoSetup
 #### Install from installer
 
 Run the released `ClawJump-Avalonia-Setup-*.exe` installer, then start Claw Jump.
+
+To upgrade an existing installation, run the newer installer and install over the original directory. User settings, logs, and generated hook files are stored under `%APPDATA%\ClawJump`, so they are not removed by overwriting the install directory. If a new version changes hook behavior, check Hook status after startup or run **Write Claude Hook config** again.
 
 On startup, Claw Jump will:
 
@@ -229,9 +235,9 @@ Default event behavior:
 
 | Hook event | Behavior |
 | --- | --- |
-| Stop | Show ready state |
-| Notification | Show ready state |
-| UserPromptSubmit | Return to idle |
+| Stop | Show ready/attention state |
+| Notification | Show ready state; show approval-required state when the notification indicates Claude Code needs permission/approval |
+| UserPromptSubmit | Show working state |
 
 ### Settings
 
