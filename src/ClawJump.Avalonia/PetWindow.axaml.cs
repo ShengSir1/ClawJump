@@ -5,6 +5,7 @@ using Avalonia.Layout;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Avalonia.Threading;
+using ClawJump.Avalonia.Models;
 
 namespace ClawJump.Avalonia;
 
@@ -12,13 +13,21 @@ public partial class PetWindow : Window
 {
     private const string IdleImage = "avares://ClawJump/Assets/claw-idle.png";
     private const string ReadyImage = "avares://ClawJump/Assets/claw-ready.png";
+    private const string AlertImage = "avares://ClawJump/Assets/claw-alert.png";
+    private const string ApprovalImage = "avares://ClawJump/Assets/claw-approval.png";
 
     private const string DockIdleImage = "avares://ClawJump/Assets/claw-peek-idle.png";
     private const string DockReadyImage = "avares://ClawJump/Assets/claw-peek-ready.png";
+    private const string DockApprovalImage = "avares://ClawJump/Assets/claw-peek-approval.png";
+
     private const string DockIdleLeftImage = "avares://ClawJump/Assets/claw-peek-idle-left.png";
     private const string DockReadyLeftImage = "avares://ClawJump/Assets/claw-peek-ready-left.png";
+    private const string DockApprovalLeftImage = "avares://ClawJump/Assets/claw-peek-approval-left.png";
+
     private const string DockIdleTopImage = "avares://ClawJump/Assets/claw-peek-idle-top.png";
     private const string DockReadyTopImage = "avares://ClawJump/Assets/claw-peek-ready-top.png";
+    private const string DockApprovalTopImage = "avares://ClawJump/Assets/claw-peek-approval-top.png";
+
 
     // 靠近边界多少像素以内触发贴边隐藏
     private const int DockThreshold = 36;
@@ -31,7 +40,7 @@ public partial class PetWindow : Window
     private Image? _clawImage;
     private Image? _dockImage;
 
-    private bool _isReady;
+    private PetState _state = PetState.Idle;
     private bool _isDocked;
     private bool _isUserMoving;
 
@@ -183,7 +192,7 @@ public partial class PetWindow : Window
         _isDocked = false;
         _dockSide = DockSide.None;
 
-        SetImage(_isReady ? ReadyImage : IdleImage);
+        SetImage(GetFullImageUri(_state));
         HideDockImage();
     }
 
@@ -270,7 +279,7 @@ public partial class PetWindow : Window
         _isDocked = false;
         _dockSide = DockSide.None;
 
-        SetImage(_isReady ? ReadyImage : IdleImage);
+        SetImage(GetFullImageUri(_state));
         ShowOnlyFullImage();
     }
 
@@ -384,54 +393,71 @@ public partial class PetWindow : Window
             return;
         }
 
-        var uri = _dockSide switch
-        {
-            DockSide.Left => _isReady ? DockReadyLeftImage : DockIdleLeftImage,
-            DockSide.Top => _isReady ? DockReadyTopImage : DockIdleTopImage,
-            _ => _isReady ? DockReadyImage : DockIdleImage
-        };
+        var uri = GetDockImageUri(_state, _dockSide);
         _dockImage.Source = GetBitmap(uri);
     }
 
     public void SetIdle()
     {
-        _isReady = false;
-        if (_isDocked)
-        {
-            UpdateDockImageByState();
-            return;
-        }
-
-        SetImage(IdleImage);
+        SetState(PetState.Idle);
     }
 
     public void SetReady()
     {
-        _isReady = true;
+        SetState(PetState.Ready);
+    }
+
+    public void SetState(PetState state)
+    {
+        _state = state;
         if (_isDocked)
         {
             UpdateDockImageByState();
             return;
         }
 
-        SetImage(ReadyImage);
+        SetImage(GetFullImageUri(_state));
     }
 
     public void ShowReady()
     {
+        ShowState(PetState.Ready);
+    }
+
+    public void ShowState(PetState state)
+    {
         _ = Dispatcher.UIThread.InvokeAsync(() =>
         {
             Show();
-
-            if (_isDocked)
-            {
-                _isReady = true;
-                UpdateDockImageByState();
-                return;
-            }
-
-            SetReady();
+            SetState(state);
         });
+    }
+
+    private static string GetFullImageUri(PetState state)
+    {
+        return state switch
+        {
+            PetState.Ready => ReadyImage,
+            PetState.ApprovalRequired => ApprovalImage,
+            PetState.ErrorOffline => AlertImage,
+            _ => IdleImage
+        };
+    }
+
+    private static string GetDockImageUri(PetState state, DockSide side)
+    {
+        return (state, side) switch
+        {
+            (PetState.ApprovalRequired, DockSide.Left) => DockApprovalLeftImage,
+            (PetState.ApprovalRequired, DockSide.Top) => DockApprovalTopImage,
+            (PetState.ApprovalRequired, _) => DockApprovalImage,
+            (PetState.Ready or PetState.ErrorOffline, DockSide.Left) => DockReadyLeftImage,
+            (PetState.Ready or PetState.ErrorOffline, DockSide.Top) => DockReadyTopImage,
+            (PetState.Ready or PetState.ErrorOffline, _) => DockReadyImage,
+            (_, DockSide.Left) => DockIdleLeftImage,
+            (_, DockSide.Top) => DockIdleTopImage,
+            _ => DockIdleImage
+        };
     }
 
     private void SetImage(string uri)

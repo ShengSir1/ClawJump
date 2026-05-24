@@ -28,6 +28,12 @@ public static class HookScriptService
         "UserPromptSubmit"
     ];
 
+    private static readonly string[] CleanupHookEventNames =
+    [
+        .. HookEventNames,
+        "ApprovalRequired"
+    ];
+
     public static string HookDirectory =>
         Path.Combine(ConfigService.ConfigDirectory, "hooks");
 
@@ -133,7 +139,7 @@ public static class HookScriptService
 
         var removedCount = 0;
 
-        foreach (var eventName in HookEventNames)
+        foreach (var eventName in CleanupHookEventNames)
         {
             if (hooksObj[eventName] is not JsonArray eventArray)
             {

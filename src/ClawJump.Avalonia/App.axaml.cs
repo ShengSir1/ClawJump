@@ -7,6 +7,7 @@ using Avalonia.Threading;
 using ClawJump.Avalonia.Models;
 using ClawJump.Avalonia.Services;
 using System.Diagnostics;
+using System.Text.Json.Nodes;
 
 namespace ClawJump.Avalonia;
 
@@ -463,27 +464,7 @@ public partial class App : Application
     private void SyncPetWithClaudeStatus()
     {
         ShowPet();
-
-        switch (_lastClaudeHookEventType?.ToLower())
-        {
-            case "userpromptsubmit":
-                _petWindow?.SetIdle();
-                break;
-
-            case "stop":
-            case "notification":
-            case "approval_required":
-                _petWindow?.ShowReady();
-                break;
-
-            case null:
-                _petWindow?.SetIdle();
-                break;
-
-            default:
-                _petWindow?.ShowReady();
-                break;
-        }
+        _petWindow?.SetState(GetPetStateForHookEventType(_lastClaudeHookEventType));
     }
 
     private void ShowLogWindow()
@@ -544,23 +525,87 @@ public partial class App : Application
         }
 
         _lastClaudeHookEventType = hookEvent.Type;
+        _petWindow.ShowState(GetPetStateForHookEvent(hookEvent));
+    }
 
-        switch (hookEvent.Type?.ToLower())
+    private static PetState GetPetStateForHookEvent(HookEvent hookEvent)
+    {
+        var eventType = hookEvent.Type?.Trim().ToLowerInvariant();
+
+        return eventType switch
         {
-            case "stop":
-            case "notification":
-            case "approval_required":
-                _petWindow.ShowReady();
-                break;
+            null or "" => PetState.Idle,
+            "userpromptsubmit" => PetState.Working,
+            "notification" when IsApprovalNotification(hookEvent) => PetState.ApprovalRequired,
+            "stop" or "notification" => PetState.Ready,
+            "approval_required" or "approvalrequired" => PetState.ApprovalRequired,
+            "error" or "offline" or "disconnect" or "connection_error" or "hook_error" => PetState.ErrorOffline,
+            _ => PetState.Ready
+        };
+    }
 
-            case "userpromptsubmit":
-                _petWindow.SetIdle();
-                break;
+    private static PetState GetPetStateForHookEventType(string? eventType)
+    {
+        return GetPetStateForHookEvent(new HookEvent { Type = eventType });
+    }
 
-            default:
-                _petWindow.ShowReady();
-                break;
+    private static bool IsApprovalNotification(HookEvent hookEvent)
+    {
+        if (!string.Equals(hookEvent.Type?.Trim(), "Notification", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
         }
+
+        if (TryReadRawInputNotificationMessage(hookEvent.RawInput, out var notificationMessage) &&
+            ContainsApprovalText(notificationMessage))
+        {
+            return true;
+        }
+
+        return ContainsApprovalText(hookEvent.Message) || ContainsApprovalText(hookEvent.RawInput);
+    }
+
+    private static bool TryReadRawInputNotificationMessage(string? rawInput, out string? message)
+    {
+        message = null;
+
+        if (string.IsNullOrWhiteSpace(rawInput))
+        {
+            return false;
+        }
+
+        try
+        {
+            if (JsonNode.Parse(rawInput) is JsonObject rawObj &&
+                rawObj["message"]?.GetValue<string>() is { } rawMessage)
+            {
+                message = rawMessage;
+                return true;
+            }
+        }
+        catch
+        {
+            return false;
+        }
+
+        return false;
+    }
+
+    private static bool ContainsApprovalText(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return false;
+        }
+
+        return text.Contains("permission", StringComparison.OrdinalIgnoreCase) ||
+               text.Contains("approval", StringComparison.OrdinalIgnoreCase) ||
+               text.Contains("approve", StringComparison.OrdinalIgnoreCase) ||
+               text.Contains("requires your", StringComparison.OrdinalIgnoreCase) ||
+               text.Contains("needs your", StringComparison.OrdinalIgnoreCase) ||
+               text.Contains("需要", StringComparison.OrdinalIgnoreCase) ||
+               text.Contains("审批", StringComparison.OrdinalIgnoreCase) ||
+               text.Contains("批准", StringComparison.OrdinalIgnoreCase);
     }
 
     private void ShowPet()
