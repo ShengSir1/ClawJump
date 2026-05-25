@@ -30,10 +30,12 @@ public partial class PetWindow : Window
 
 
     // 靠近边界多少像素以内触发贴边隐藏
-    private const int DockThreshold = 36;
+    private const int DockThreshold = 25;
 
     // 隐藏后露出多少像素
-    private const int VisibleStrip = 82;
+    private const int VisibleStrip = 88;
+    private const int EdgeOffset = 0;
+    private const int TopOffset = -7;
 
     private readonly Dictionary<string, Bitmap> _bitmapCache = new();
 
@@ -98,19 +100,14 @@ public partial class PetWindow : Window
             return;
         }
 
-        // 已经贴边隐藏时，点击爬窗图，只恢复显示，不再次隐藏
-        if (_isDocked)
-        {
-            RestoreFromDock();
-            e.Handled = true;
-            return;
-        }
+        var wasDocked = _isDocked;
 
-        // 使用 Avalonia 原生窗口拖动，更跟手
         _isUserMoving = true;
 
-        // 拖动完整图时，确保显示完整小爪子
-        HideDockImage();
+        if (!wasDocked)
+        {
+            HideDockImage();
+        }
 
         BeginMoveDrag(e);
 
@@ -156,36 +153,43 @@ public partial class PetWindow : Window
             return;
         }
 
-        var area = screen.WorkingArea;
+        var area = screen.Bounds;
+        var scale = GetScreenScale(screen);
+        var windowWidth = Scale(Width, scale);
+        var windowHeight = Scale(Height, scale);
+        var dockThreshold = Scale(DockThreshold, scale);
 
         var windowLeft = Position.X;
         var windowTop = Position.Y;
-        var windowRight = Position.X + (int)Width;
+        var windowRight = Position.X + windowWidth;
+        var windowBottom = Position.Y + windowHeight;
 
-        // 已经靠近或超过左边界
-        var hitLeft = windowLeft <= area.X + DockThreshold;
-
-        // 已经靠近或超过右边界
-        var hitRight = windowRight >= area.Right - DockThreshold;
-
-        // 已经靠近或超过上边界
-        var hitTop = windowTop <= area.Y + DockThreshold;
+        var hitLeft = windowLeft <= area.X + dockThreshold;
+        var hitRight = windowRight >= area.Right - dockThreshold;
+        var hitTop = windowTop <= area.Y + dockThreshold;
+        var hitBottom = windowBottom >= area.Bottom - dockThreshold;
 
         if (hitLeft)
         {
-            DockToLeft(area);
+            DockToLeft(area, scale);
             return;
         }
 
         if (hitRight)
         {
-            DockToRight(area);
+            DockToRight(area, scale);
             return;
         }
 
         if (hitTop)
         {
-            DockToTop(area);
+            DockToTop(area, scale);
+            return;
+        }
+
+        if (_isDocked && !hitLeft && !hitRight && !hitTop && !hitBottom)
+        {
+            RestoreFromDock();
             return;
         }
 
@@ -196,7 +200,7 @@ public partial class PetWindow : Window
         HideDockImage();
     }
 
-    private void DockToLeft(PixelRect area)
+    private void DockToLeft(PixelRect area, double scale)
     {
         _isDocked = true;
         _dockSide = DockSide.Left;
@@ -204,14 +208,19 @@ public partial class PetWindow : Window
         // 关键：移动前先隐藏两张图，避免爬窗图在中间位置闪现
         HideBothImages();
 
+        var windowWidth = Scale(Width, scale);
+        var windowHeight = Scale(Height, scale);
+        var visibleStrip = Scale(VisibleStrip, scale);
+        var edgeOffset = Scale(EdgeOffset, scale);
+
         Position = new PixelPoint(
-            area.X - (int)Width + VisibleStrip,
-            Clamp(Position.Y, area.Y, area.Bottom - (int)Height));
+            area.X - windowWidth + visibleStrip + edgeOffset,
+            Clamp(Position.Y, area.Y, area.Bottom - windowHeight));
 
         ShowOnlyDockImage(DockSide.Left);
     }
 
-    private void DockToRight(PixelRect area)
+    private void DockToRight(PixelRect area, double scale)
     {
         _isDocked = true;
         _dockSide = DockSide.Right;
@@ -219,14 +228,18 @@ public partial class PetWindow : Window
         // 关键：移动前先隐藏两张图，避免爬窗图在中间位置闪现
         HideBothImages();
 
+        var windowHeight = Scale(Height, scale);
+        var visibleStrip = Scale(VisibleStrip, scale);
+        var edgeOffset = Scale(EdgeOffset, scale);
+
         Position = new PixelPoint(
-            area.Right - VisibleStrip,
-            Clamp(Position.Y, area.Y, area.Bottom - (int)Height));
+            area.Right - visibleStrip + edgeOffset,
+            Clamp(Position.Y, area.Y, area.Bottom - windowHeight));
 
         ShowOnlyDockImage(DockSide.Right);
     }
 
-    private void DockToTop(PixelRect area)
+    private void DockToTop(PixelRect area, double scale)
     {
         _isDocked = true;
         _dockSide = DockSide.Top;
@@ -234,9 +247,14 @@ public partial class PetWindow : Window
         // 关键：移动前先隐藏两张图，避免爬窗图在中间位置闪现
         HideBothImages();
 
+        var windowWidth = Scale(Width, scale);
+        var windowHeight = Scale(Height, scale);
+        var visibleStrip = Scale(VisibleStrip, scale);
+        var topOffset = Scale(TopOffset, scale);
+
         Position = new PixelPoint(
-            Clamp(Position.X, area.X, area.Right - (int)Width),
-            area.Y - (int)Height + VisibleStrip);
+            Clamp(Position.X, area.X, area.Right - windowWidth),
+            area.Y - windowHeight + visibleStrip + topOffset);
 
         ShowOnlyDockImage(DockSide.Top);
     }
@@ -250,7 +268,10 @@ public partial class PetWindow : Window
             return;
         }
 
-        var area = screen.WorkingArea;
+        var area = screen.Bounds;
+        var scale = GetScreenScale(screen);
+        var windowWidth = Scale(Width, scale);
+        var windowHeight = Scale(Height, scale);
 
         // 关键：恢复前先隐藏爬窗图，防止爬窗图残留在恢复前的位置
         HideBothImages();
@@ -260,18 +281,18 @@ public partial class PetWindow : Window
             case DockSide.Left:
                 Position = new PixelPoint(
                     area.X,
-                    Clamp(Position.Y, area.Y, area.Bottom - (int)Height));
+                    Clamp(Position.Y, area.Y, area.Bottom - windowHeight));
                 break;
 
             case DockSide.Right:
                 Position = new PixelPoint(
-                    area.Right - (int)Width,
-                    Clamp(Position.Y, area.Y, area.Bottom - (int)Height));
+                    area.Right - windowWidth,
+                    Clamp(Position.Y, area.Y, area.Bottom - windowHeight));
                 break;
 
             case DockSide.Top:
                 Position = new PixelPoint(
-                    Clamp(Position.X, area.X, area.Right - (int)Width),
+                    Clamp(Position.X, area.X, area.Right - windowWidth),
                     area.Y);
                 break;
         }
@@ -379,11 +400,15 @@ public partial class PetWindow : Window
             return;
         }
 
-        var area = screen.WorkingArea;
+        var area = screen.Bounds;
+        var scale = GetScreenScale(screen);
+        var windowWidth = Scale(Width, scale);
+        var windowHeight = Scale(Height, scale);
+        var margin = Scale(30, scale);
 
         Position = new PixelPoint(
-            area.Right - (int)Width - 30,
-            area.Bottom - (int)Height - 30);
+            area.Right - windowWidth - margin,
+            area.Bottom - windowHeight - margin);
     }
 
     private void UpdateDockImageByState()
@@ -483,6 +508,16 @@ public partial class PetWindow : Window
         _bitmapCache[uri] = bitmap;
 
         return bitmap;
+    }
+
+    private static double GetScreenScale(Screen screen)
+    {
+        return screen.Scaling <= 0 ? 1 : screen.Scaling;
+    }
+
+    private static int Scale(double value, double scale)
+    {
+        return (int)Math.Round(value * scale);
     }
 
     private static int Clamp(int value, int min, int max)
